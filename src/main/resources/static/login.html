@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Complaints System</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .form-group input {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 12px;
+            font-size: 16px;
+        }
+
+        .btn-login {
+            background: #3498db;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .btn-login:hover {
+            background: #2980b9;
+        }
+
+        .error {
+            background: #ffecec;
+            color: #e74c3c;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .system-name {
+            text-align: center;
+            color: #3498db;
+            font-size: 24px;
+            margin-bottom: 40px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="system-name">IT Support Ticket System</div>
+<div class="login-container">
+    <h2 class="login-header">Login to Your Account</h2>
+    <form id="loginForm">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" placeholder="Enter your username" required>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter your password" required>
+        </div>
+
+        <button type="submit" class="btn-login">Login</button>
+        <div id="error" class="error"></div>
+    </form>
+</div>
+
+<script>
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+        const errorElement = document.getElementById("error");
+
+        // Clear previous errors
+        errorElement.style.display = 'none';
+        errorElement.innerText = '';
+
+        try {
+            const res = await fetch("http://localhost:8080/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || "Invalid credentials");
+            }
+
+            const data = await res.json();
+
+            // Save session info
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("userId", data.userId);
+            localStorage.setItem("username", data.username);
+            localStorage.setItem("role", data.role);
+            localStorage.setItem("firstName", data.firstName || '');
+            localStorage.setItem("lastName", data.lastName || '');
+
+            // Redirect based on role
+            if (data.role === "STAFF") {
+                window.location.href = "staff-create-ticket.html";
+            } else if (data.role === "ICT_AGENT") {
+                window.location.href = "ict-agent-view-tickets.html";
+            } else if (data.role === "ADMINISTRATOR") {
+                window.location.href = "administrator-view-tickets.html";
+            } else {
+                window.location.href = "login.html";
+            }
+
+        } catch (err) {
+            errorElement.innerText = err.message;
+            errorElement.style.display = 'block';
+        }
+    });
+
+    // Check if already logged in
+    document.addEventListener('DOMContentLoaded', () => {
+        const token = localStorage.getItem("token");
+        const role = localStorage.getItem("role");
+
+        if (token && role) {
+            if (role === "STAFF") {
+                window.location.href = "staff-create-ticket.html";
+            } else if (role === "ICT_AGENT") {
+                window.location.href = "ict-agent-view-tickets.html";
+            } else if (role === "ADMINISTRATOR") {
+                window.location.href = "administrator-view-tickets.html";
+            }
+        }
+    });
+</script>
+</body>
+</html>

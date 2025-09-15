@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket Details</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+    <a href="staff-create-ticket.html">Create Ticket</a> |
+    <a href="staff-view-tickets.html">View My Tickets</a> |
+    <a href="login.html" onclick="logout()">Logout</a>
+</nav>
+
+<div class="container">
+    <h2 id="ticketTitle">Ticket Details</h2>
+    <p><b>Description:</b> <span id="ticketDescription"></span></p>
+    <p><b>Priority:</b> <span id="ticketPriority"></span></p>
+    <p><b>Status:</b> <span id="ticketStatus"></span></p>
+    <p><b>Attachments:</b></p>
+    <ul id="attachments"></ul>
+</div>
+
+<script>
+    const token3 = localStorage.getItem("token");
+    const ticketId = localStorage.getItem("selectedTicketId");
+
+    if (!token3 || !ticketId) window.location.href = "login.html";
+
+    async function loadTicketDetails() {
+      // Get ticket info
+      const res = await fetch("http://localhost:8080/api/tickets", {
+        headers: { "Authorization": "Bearer " + token3 }
+      });
+      const data = await res.json();
+      const ticket = data.content.find(t => t.id == ticketId);
+
+      if (!ticket) {
+        document.querySelector(".container").innerHTML = "<p>Ticket not found.</p>";
+        return;
+      }
+
+      document.getElementById("ticketTitle").innerText = ticket.title;
+      document.getElementById("ticketDescription").innerText = ticket.description;
+      document.getElementById("ticketPriority").innerText = ticket.priority ? ticket.priority.name : "-";
+      document.getElementById("ticketStatus").innerText = ticket.status ? ticket.status.name : "-";
+
+      // Load attachments
+      const resAttach = await fetch(`http://localhost:8080/api/attachments/ticket/${ticketId}`, {
+        headers: { "Authorization": "Bearer " + token3 }
+      });
+      const attachments = await resAttach.json();
+      const attachList = document.getElementById("attachments");
+      attachList.innerHTML = "";
+
+      if (attachments.length === 0) {
+        attachList.innerHTML = "<li>No attachments</li>";
+      } else {
+        attachments.forEach(a => {
+          attachList.innerHTML += `<li>
+            <a href="http://localhost:8080/attachments/${a.storedFileName}" target="_blank">${a.originalFileName}</a>
+          </li>`;
+        });
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+    }
+
+    loadTicketDetails();
+</script>
+</body>
+</html>

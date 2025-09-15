@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Tickets</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+    <a href="staff-create-ticket.html">Create Ticket</a> |
+    <a href="staff-view-tickets.html">View My Tickets</a> |
+    <a href="login.html" onclick="logout()">Logout</a>
+</nav>
+
+<div class="container">
+    <h2>My Tickets</h2>
+    <table border="1">
+        <thead>
+        <tr>
+            <th>No.</th>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Assigned To</th>
+            <th>Created Date</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody id="ticketTable"></tbody>
+    </table>
+</div>
+
+<script>
+    const token2 = localStorage.getItem("token");
+    const userId2 = localStorage.getItem("userId");
+
+    if (!token2) window.location.href = "login.html";
+
+    async function loadTickets() {
+      const res = await fetch("http://localhost:8080/api/tickets", {
+        headers: { "Authorization": "Bearer " + token2 }
+      });
+      const data = await res.json();
+      const tbody = document.getElementById("ticketTable");
+
+      tbody.innerHTML = "";
+      let counter = 1;
+      data.content.forEach(t => {
+        if (t.createdBy && t.createdBy.id == userId2) {
+          tbody.innerHTML += `
+            <tr>
+              <td>${counter++}</td>
+              <td>${t.title}</td>
+              <td>${t.category ? t.category.name : "-"}</td>
+              <td>${t.priority ? t.priority.name : "-"}</td>
+              <td>${t.status ? t.status.name : "-"}</td>
+              <td>${t.assignedAgent ? t.assignedAgent.firstName + " " + t.assignedAgent.lastName : "Unassigned"}</td>
+              <td>${t.createdAt ? new Date(t.createdAt).toLocaleString() : "-"}</td>
+              <td><button onclick="openTicket(${t.id})">Open</button></td>
+            </tr>`;
+        }
+      });
+    }
+
+    function openTicket(ticketId) {
+      localStorage.setItem("selectedTicketId", ticketId);
+      window.location.href = "staff-ticket-details.html";
+    }
+
+    function logout() {
+      localStorage.clear();
+    }
+
+    loadTickets();
+</script>
+</body>
+</html>

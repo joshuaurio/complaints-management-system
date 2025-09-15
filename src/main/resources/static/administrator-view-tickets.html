@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrator - View Tickets</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: #3498db;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-open {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status-in-progress {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .status-resolved {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .status-closed {
+            background: #f5f5f5;
+            color: #616161;
+        }
+
+        .priority-high {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .priority-medium {
+            color: #f39c12;
+            font-weight: bold;
+        }
+
+        .priority-low {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .btn-view {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn-view:hover {
+            background: #2980b9;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="administrator-create-ticket.html">Create Ticket</a> |
+    <a href="administrator-view-tickets.html" class="active">View Tickets</a> |
+    <a href="administrator-ticket-details.html">Dashboard</a> |
+    <a href="login.html" onclick="logout()">Logout</a>
+</nav>
+
+<div class="container">
+    <div class="header">
+        <h2>All Tickets</h2>
+        <div class="user-info">
+            <div class="user-avatar">
+                ${localStorage.getItem('firstName') ? localStorage.getItem('firstName').charAt(0) + localStorage.getItem('lastName').charAt(0) : 'A'}
+            </div>
+            <div>
+                <strong>${localStorage.getItem('firstName')} ${localStorage.getItem('lastName')}</strong>
+                <div style="font-size: 12px; color: #7f8c8d;">Administrator</div>
+            </div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Created By</th>
+            <th>Created Date</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody id="ticketTable">
+        <tr>
+            <td colspan="8" class="loading">Loading tickets...</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const token = localStorage.getItem("token");
+    if (!token) {
+        window.location.href = "login.html";
+    }
+
+    async function loadTickets() {
+        try {
+            const res = await fetch("http://localhost:8080/api/tickets", {
+                headers: { "Authorization": "Bearer " + token }
+            });
+
+            if (res.status === 401) {
+                logout();
+                return;
+            }
+
+            const data = await res.json();
+            const tbody = document.getElementById("ticketTable");
+            tbody.innerHTML = "";
+
+            if (data.content && data.content.length > 0) {
+                data.content.forEach(t => {
+                    const statusClass = t.status ? `status-${t.status.name.toLowerCase().replace(' ', '-')}` : '';
+                    const priorityClass = t.priority ? `priority-${t.priority.name.toLowerCase()}` : '';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${t.id}</td>
+                            <td>${t.title}</td>
+                            <td>${t.category ? t.category.name : '-'}</td>
+                            <td><span class="status-badge ${statusClass}">${t.status ? t.status.name : '-'}</span></td>
+                            <td class="${priorityClass}">${t.priority ? t.priority.name : '-'}</td>
+                            <td>${t.createdBy ? t.createdBy.firstName + ' ' + t.createdBy.lastName : '-'}</td>
+                            <td>${t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '-'}</td>
+                            <td><button class="btn-view" onclick="viewDetails(${t.id})">View</button></td>
+                        </tr>`;
+                });
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 30px; color: #7f8c8d;">
+                            No tickets found
+                        </td>
+                    </tr>`;
+            }
+        } catch (error) {
+            console.error("Error loading tickets:", error);
+            document.getElementById("ticketTable").innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 30px; color: #e74c3c;">
+                        Error loading tickets. Please try again.
+                    </td>
+                </tr>`;
+        }
+    }
+
+    function viewDetails(id) {
+        localStorage.setItem("selectedTicketId", id);
+        window.location.href = "administrator-ticket-details.html";
+    }
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = "login.html";
+    }
+
+    // Load tickets when page is ready
+    document.addEventListener('DOMContentLoaded', loadTickets);
+</script>
+</body>
+</html>

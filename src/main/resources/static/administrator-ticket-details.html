@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Administrator - Ticket Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .card-container { display: flex; gap: 1rem; }
+        .card { flex: 1; padding: 1rem; border: 1px solid #ccc; border-radius: 8px; }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="administrator-create-ticket.html">Create Ticket</a> |
+    <a href="administrator-view-tickets.html">View Tickets</a> |
+    <a href="login.html" onclick="logout()">Logout</a>
+</nav>
+
+<div class="container">
+    <h2>Ticket Dashboard</h2>
+    <div class="card-container">
+        <div class="card"><h3>Open Tickets</h3><ul id="openTickets"></ul></div>
+        <div class="card"><h3>Assigned Tickets</h3><ul id="assignedTickets"></ul></div>
+        <div class="card"><h3>Unassigned Tickets</h3><ul id="unassignedTickets"></ul></div>
+        <div class="card"><h3>My Tickets</h3><ul id="myTickets"></ul></div>
+    </div>
+</div>
+
+<script>
+    const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+    if (!token) window.location.href = "login.html";
+
+    async function loadTickets() {
+      const res = await fetch("http://localhost:8080/api/tickets", {
+        headers: { "Authorization": "Bearer " + token }
+      });
+      const data = await res.json();
+
+      const openList = document.getElementById("openTickets");
+      const assignedList = document.getElementById("assignedTickets");
+      const unassignedList = document.getElementById("unassignedTickets");
+      const myList = document.getElementById("myTickets");
+
+      openList.innerHTML = "";
+      assignedList.innerHTML = "";
+      unassignedList.innerHTML = "";
+      myList.innerHTML = "";
+
+      data.content.forEach(t => {
+        const li = `<li>${t.title} (${t.status ? t.status.name : "N/A"})</li>`;
+        if (t.status && t.status.name === "Open") openList.innerHTML += li;
+        if (t.assignedAgent) assignedList.innerHTML += li;
+        if (!t.assignedAgent) unassignedList.innerHTML += li;
+        if (t.assignedAgent && t.assignedAgent.id == userId) myList.innerHTML += li;
+      });
+    }
+
+    function logout() { localStorage.clear(); }
+
+    loadTickets();
+</script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Administrator - Create Ticket</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+    <a href="administrator-create-ticket.html">Create Ticket</a> |
+    <a href="administrator-view-tickets.html">View Tickets</a> |
+    <a href="login.html" onclick="logout()">Logout</a>
+</nav>
+
+<div class="container">
+    <h2>Create New Ticket</h2>
+    <form id="ticketForm">
+        <label>Title</label>
+        <input type="text" id="title" required>
+
+        <label>Description</label>
+        <textarea id="description" required></textarea>
+
+        <label>Category</label>
+        <select id="categorySelect"></select>
+
+        <label>Priority</label>
+        <select id="prioritySelect"></select>
+
+        <button type="submit">Submit</button>
+    </form>
+    <p id="message"></p>
+</div>
+
+<script>
+    const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+
+    if (!token) window.location.href = "login.html";
+
+    async function loadDropdowns() {
+      const catRes = await fetch("http://localhost:8080/api/categories", {
+        headers: { "Authorization": "Bearer " + token }
+      });
+      const categories = await catRes.json();
+      const catSelect = document.getElementById("categorySelect");
+      categories.forEach(c => {
+        catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+      });
+
+      const priRes = await fetch("http://localhost:8080/api/priorities", {
+        headers: { "Authorization": "Bearer " + token }
+      });
+      const priorities = await priRes.json();
+      const priSelect = document.getElementById("prioritySelect");
+      priorities.forEach(p => {
+        priSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+      });
+    }
+
+    document.getElementById("ticketForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const res = await fetch("http://localhost:8080/api/tickets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+          title: document.getElementById("title").value,
+          description: document.getElementById("description").value,
+          categoryId: document.getElementById("categorySelect").value,
+          priorityId: document.getElementById("prioritySelect").value,
+          createdById: userId
+        })
+      });
+
+      if (res.ok) {
+        document.getElementById("message").innerText = "Ticket created successfully!";
+        document.getElementById("ticketForm").reset();
+      } else {
+        document.getElementById("message").innerText = "Failed to create ticket";
+      }
+    });
+
+    function logout() { localStorage.clear(); }
+
+    loadDropdowns();
+</script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ICT Agent - Create Ticket</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+    <a href="ict-agent-create-ticket.html">Create Ticket</a> |
+    <a href="ict-agent-view-tickets.html">View My Assigned Tickets</a> |
+    <a href="login.html" onclick="logout()">Logout</a>
+</nav>
+
+<div class="container">
+    <h2>Create Ticket (ICT Agent)</h2>
+    <form id="ticketForm">
+        <label>Title *</label>
+        <input type="text" id="title" required>
+
+        <label>Category *</label>
+        <select id="category" required></select>
+
+        <label>Priority *</label>
+        <select id="priority" required></select>
+
+        <label>Description *</label>
+        <textarea id="description" required></textarea>
+
+        <label>Attachment (optional)</label>
+        <input type="file" id="attachment">
+
+        <button type="submit">Submit Ticket</button>
+        <p id="message"></p>
+    </form>
+</div>
+
+<script>
+    const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+    if (!token) window.location.href = "login.html";
+
+    async function loadDropdowns() {
+      const [catRes, priRes] = await Promise.all([
+        fetch("http://localhost:8080/api/categories", { headers: { "Authorization": "Bearer " + token }}),
+        fetch("http://localhost:8080/api/priorities", { headers: { "Authorization": "Bearer " + token }})
+      ]);
+      const categories = await catRes.json();
+      const priorities = await priRes.json();
+
+      const catSelect = document.getElementById("category");
+      categories.forEach(c => catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+
+      const priSelect = document.getElementById("priority");
+      priorities.forEach(p => priSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+    }
+    loadDropdowns();
+
+    document.getElementById("ticketForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("title").value.trim();
+      const description = document.getElementById("description").value.trim();
+      const categoryId = document.getElementById("category").value;
+      const priorityId = document.getElementById("priority").value;
+      const file = document.getElementById("attachment").files[0];
+
+      try {
+        const res = await fetch("http://localhost:8080/api/tickets", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+          },
+          body: JSON.stringify({
+            title, description, categoryId, priorityId,
+            createdById: userId, statusName: "OPEN"
+          })
+        });
+
+        if (!res.ok) throw new Error("Failed to create ticket");
+        const ticket = await res.json();
+
+        if (file) {
+          const formData = new FormData();
+          formData.append("uploadedById", userId);
+          formData.append("file", file);
+
+          await fetch(`http://localhost:8080/api/attachments/ticket/${ticket.id}`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token },
+            body: formData
+          });
+        }
+
+        document.getElementById("message").innerText = "Ticket created successfully!";
+        document.getElementById("ticketForm").reset();
+      } catch (err) {
+        document.getElementById("message").innerText = err.message;
+      }
+    });
+
+    function logout() { localStorage.clear(); }
+</script>
+</body>
+</html>

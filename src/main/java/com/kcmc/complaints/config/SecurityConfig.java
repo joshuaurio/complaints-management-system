@@ -59,13 +59,13 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.DELETE, "/api/statuses/**").hasRole("ADMINISTRATOR")
 
                                 // ✅ Category APIs rules
-                                .requestMatchers(HttpMethod.GET, "/api/categories/**").hasAnyRole("ADMINISTRATOR", "STAFF", "ICT_AGENT", "USER")
+                                .requestMatchers(HttpMethod.GET, "/api/categories/**").hasAnyRole("ADMINISTRATOR", "STAFF", "ICT_AGENT")
                                 .requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMINISTRATOR")
                                 .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMINISTRATOR")
                                 .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMINISTRATOR")
 
                         // ✅ Department APIs rules
-                        .requestMatchers(HttpMethod.GET, "/api/departments/**").hasAnyRole("ADMINISTRATOR", "STAFF", "ICT_AGENT", "USER")
+                        .requestMatchers(HttpMethod.GET, "/api/departments/**").hasAnyRole("ADMINISTRATOR", "STAFF", "ICT_AGENT")
                         .requestMatchers(HttpMethod.POST, "/api/departments/**").hasRole("ADMINISTRATOR")
                         .requestMatchers(HttpMethod.PUT, "/api/departments/**").hasRole("ADMINISTRATOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/departments/**").hasRole("ADMINISTRATOR")

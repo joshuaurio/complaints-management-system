@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ICT Agent - Ticket Details</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+    <a href="ict-agent-create-ticket.html">Create Ticket</a> |
+    <a href="ict-agent-view-tickets.html">View My Tickets</a> |
+    <a href="login.html" onclick="logout()">Logout</a>
+</nav>
+
+<div class="container">
+    <h2 id="ticketTitle">Ticket Details</h2>
+    <p><b>Assigned By:</b> <span id="assignedBy"></span></p>
+    <p><b>Category:</b> <span id="ticketCategory"></span></p>
+    <p><b>Description:</b> <span id="ticketDescription"></span></p>
+    <p><b>Priority:</b> <span id="ticketPriority"></span></p>
+    <p><b>Status:</b> <span id="ticketStatus"></span></p>
+
+    <h3>Attachments</h3>
+    <ul id="attachments"></ul>
+
+    <h3>Comments</h3>
+    <ul id="commentList"></ul>
+    <textarea id="commentText" placeholder="Write a comment..."></textarea>
+    <button onclick="addComment()">Add Comment</button>
+
+    <h3>Change Status</h3>
+    <label>Status</label>
+    <select id="statusSelect"></select>
+    <button onclick="updateStatus()">Update Ticket</button>
+
+    <p id="message"></p>
+</div>
+
+<script>
+    const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+    const ticketId = localStorage.getItem("selectedTicketId");
+
+    if (!token || !ticketId) window.location.href = "login.html";
+
+    async function loadTicket() {
+      const res = await fetch("http://localhost:8080/api/tickets", {
+        headers: { "Authorization": "Bearer " + token }
+      });
+      const data = await res.json();
+      const ticket = data.content.find(t => t.id == ticketId);
+
+      if (!ticket) {
+        document.querySelector(".container").innerHTML = "<p>Ticket not found.</p>";
+        return;
+      }
+
+      document.getElementById("ticketTitle").innerText = ticket.title;
+      document.getElementById("assignedBy").innerText = ticket.createdBy ? ticket.createdBy.firstName + " " + ticket.createdBy.lastName : "-";
+      document.getElementById("ticketCategory").innerText = ticket.category ? ticket.category.name : "-";
+      document.getElementById("ticketDescription").innerText = ticket.description;
+      document.getElementById("ticketPriority").innerText = ticket.priority ? ticket.priority.name : "-";
+      document.getElementById("ticketStatus").innerText = ticket.status ? ticket.status.name : "-";
+
+      // Load attachments
+      const resAttach = await fetch(`http://localhost:8080/api/attachments/ticket/${ticketId}`, {
+        headers: { "Authorization": "Bearer " + token }
+      });
+      const attachments = await resAttach.json();
+      const attachList = document.getElementById("attachments");
+      attachList.innerHTML = "";
+      if (attachments.length === 0) {
+        attachList.innerHTML = "<li>No attachments</li>";
+      } else {
+        attachments.forEach(a => {
+          attachList.innerHTML += `<li><a href="http://localhost:8080/attachments/${a.storedFileName}" target="_blank">${a.originalFileName}</a></li>`;
+        });
+      }
+
+      loadComments();
+      loadStatuses();
+    }
+
+    async function loadComments() {
+      const res = await fetch(`http://localhost:8080/api/ticket-comments/ticket/${ticketId}`, {
+        headers: { "Authorization": "Bearer " + token }
+      });
+      const comments = await res.json();
+      const list = document.getElementById("commentList");
+      list.innerHTML = "";
+      if (comments.length === 0) {
+        list.innerHTML = "<li>No comments yet</li>";
+      } else {
+        comments.forEach(c => {
+          list.innerHTML += `<li><b>${c.author.firstName} ${c.author.lastName}:</b> ${c.content} <i>(${new Date(c.createdAt).toLocaleString()})</i></li>`;
+        });
+      }
+    }
+
+    async function addComment() {
+      const content = document.getElementById("commentText").value.trim();
+      if (!content) return;
+
+      const res = await fetch("http://localhost:8080/api/ticket-comments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+          ticketId: ticketId,
+          authorId: userId,
+          content: content,
+          isInternal: false
+        })
+      });
+
+      if (res.ok) {
+        document.getElementById("commentText").value = "";
+        loadComments();
+      } else {
+        document.getElementById("message").innerText = "Failed to add comment";
+      }
+    }
+
+    async function loadStatuses() {
+      const statusRes = await fetch("http://localhost:8080/api/statuses", {
+        headers: { "Authorization": "Bearer " + token }
+      });
+      const statuses = await statusRes.json();
+      const statusSelect = document.getElementById("statusSelect");
+      statusSelect.innerHTML = "";
+      statuses.forEach(s => {
+        statusSelect.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+      });
+    }
+
+    async function updateStatus() {
+      const statusName = document.getElementById("statusSelect").value;
+
+      const res = await fetch(`http://localhost:8080/api/tickets/${ticketId}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ statusName })
+      });
+
+      if (res.ok) {
+        document.getElementById("message").innerText = "Ticket status updated successfully!";
+        loadTicket();
+      } else {
+        document.getElementById("message").innerText = "Failed to update status";
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+    }
+
+    loadTicket();
+</script>
+</body>
+</html>

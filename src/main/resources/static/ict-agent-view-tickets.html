@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ICT Agent - My Tickets</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+    <a href="ict-agent-create-ticket.html">Create Ticket</a> |
+    <a href="ict-agent-view-tickets.html">View My Assigned Tickets</a> |
+    <a href="login.html" onclick="logout()">Logout</a>
+</nav>
+
+<div class="container">
+    <h2>Tickets Assigned to Me</h2>
+    <table border="1">
+        <thead>
+        <tr>
+            <th>No.</th>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Created By</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody id="ticketTable"></tbody>
+    </table>
+</div>
+
+<script>
+    const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+    if (!token) window.location.href = "login.html";
+
+    async function loadTickets() {
+      const res = await fetch("http://localhost:8080/api/tickets", {
+        headers: { "Authorization": "Bearer " + token }
+      });
+      const data = await res.json();
+      const tbody = document.getElementById("ticketTable");
+
+      tbody.innerHTML = "";
+      let counter = 1;
+      data.content.forEach(t => {
+        if (t.assignedAgent && t.assignedAgent.id == userId) {
+          tbody.innerHTML += `
+            <tr>
+              <td>${counter++}</td>
+              <td>${t.title}</td>
+              <td>${t.category ? t.category.name : "-"}</td>
+              <td>${t.priority ? t.priority.name : "-"}</td>
+              <td>${t.status ? t.status.name : "-"}</td>
+              <td>${t.createdBy ? t.createdBy.firstName + " " + t.createdBy.lastName : "-"}</td>
+              <td><button onclick="openTicket(${t.id})">Open</button></td>
+            </tr>`;
+        }
+      });
+    }
+
+    function openTicket(ticketId) {
+      localStorage.setItem("selectedTicketId", ticketId);
+      window.location.href = "ict-agent-ticket-details.html";
+    }
+
+    function logout() { localStorage.clear(); }
+    loadTickets();
+</script>
+</body>
+</html>
