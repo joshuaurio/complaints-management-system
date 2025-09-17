@@ -58,7 +58,7 @@ public class AttachmentController {
         );
     }
 
-    // 🔹 Download attachment by ID
+    // 🔹 Download attachment by ID (forces save dialog)
     @GetMapping("/{id}/download")
     public ResponseEntity<Resource> download(@PathVariable Long id) throws MalformedURLException {
         Attachment att = svc.getById(id);
@@ -74,6 +74,25 @@ public class AttachmentController {
                 .contentType(MediaType.parseMediaType(att.getMimeType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + att.getOriginalFileName() + "\"")
+                .body(resource);
+    }
+
+    // 🔹 Preview attachment inline (open in browser if supported)
+    @GetMapping("/{id}/preview")
+    public ResponseEntity<Resource> preview(@PathVariable Long id) throws MalformedURLException {
+        Attachment att = svc.getById(id);
+
+        Path filePath = Paths.get(storagePath).resolve(att.getStoredFileName());
+        Resource resource = new UrlResource(filePath.toUri());
+
+        if (!resource.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(att.getMimeType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + att.getOriginalFileName() + "\"")
                 .body(resource);
     }
 }
