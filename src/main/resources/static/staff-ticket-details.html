@@ -2,73 +2,403 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ticket Details</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Basic styling for the gallery items */
+        .gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .gallery-item {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            width: 200px;
+            text-align: center;
+        }
+
+        .gallery-item img, .gallery-item video {
+            max-width: 100%;
+            max-height: 150px;
+            margin-bottom: 10px;
+        }
+
+        .gallery-item button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .gallery-item button:hover {
+            background-color: #45a049;
+        }
+
+        .empty-state {
+            padding: 20px;
+            text-align: center;
+            color: #888;
+        }
+
+        .loading {
+            padding: 20px;
+            text-align: center;
+            color: #555;
+        }
+
+        .error {
+            padding: 20px;
+            text-align: center;
+            color: #d32f2f;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .ticket-info {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .attachment-section {
+            margin-bottom: 30px;
+        }
+
+        nav {
+            background-color: #333;
+            padding: 15px;
+            margin-bottom: 30px;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 20px;
+            padding: 10px;
+        }
+
+        nav a:hover {
+            background-color: #555;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
 <nav>
-    <a href="staff-create-ticket.html">Create Ticket</a> |
-    <a href="staff-view-tickets.html">View My Tickets</a> |
-    <a href="login.html" onclick="logout()">Logout</a>
+    <a href="staff-create-ticket.html">Create Ticket</a>
+    <a href="staff-view-tickets.html">View My Tickets</a>
+    <a href="#" onclick="logout()">Logout</a>
 </nav>
 
 <div class="container">
-    <h2 id="ticketTitle">Ticket Details</h2>
-    <p><b>Description:</b> <span id="ticketDescription"></span></p>
-    <p><b>Priority:</b> <span id="ticketPriority"></span></p>
-    <p><b>Status:</b> <span id="ticketStatus"></span></p>
-    <p><b>Attachments:</b></p>
-    <ul id="attachments"></ul>
+    <div class="ticket-info">
+        <h2 id="ticketTitle">Loading ticket details...</h2>
+        <p><b>Description:</b> <span id="ticketDescription">Loading...</span></p>
+        <p><b>Priority:</b> <span id="ticketPriority">Loading...</span></p>
+        <p><b>Status:</b> <span id="ticketStatus">Loading...</span></p>
+    </div>
+
+    <div class="attachment-section">
+        <h3>Images</h3>
+        <div id="imagesGallery" class="gallery">
+            <div class="loading">Loading images...</div>
+        </div>
+    </div>
+
+    <div class="attachment-section">
+        <h3>PDFs</h3>
+        <div id="pdfsGallery" class="gallery">
+            <div class="loading">Loading PDFs...</div>
+        </div>
+    </div>
+
+    <div class="attachment-section">
+        <h3>Videos</h3>
+        <div id="videosGallery" class="gallery">
+            <div class="loading">Loading videos...</div>
+        </div>
+    </div>
+
+    <div class="attachment-section" id="otherFilesSection" style="display: none;">
+        <h3>Other Files</h3>
+        <div id="otherFilesGallery" class="gallery"></div>
+    </div>
 </div>
 
 <script>
-    const token3 = localStorage.getItem("token");
+    // Configuration
+    const API_BASE = window.location.origin + "/api"; // Dynamic API base URL
+    const token = localStorage.getItem("token");
     const ticketId = localStorage.getItem("selectedTicketId");
 
-    if (!token3 || !ticketId) window.location.href = "login.html";
+    // Object URL cache for cleanup
+    const objectUrls = [];
+
+    // Check authentication
+    if (!token || !ticketId) {
+        window.location.href = "login.html";
+    }
 
     async function loadTicketDetails() {
-      // Get ticket info
-      const res = await fetch("http://localhost:8080/api/tickets", {
-        headers: { "Authorization": "Bearer " + token3 }
-      });
-      const data = await res.json();
-      const ticket = data.content.find(t => t.id == ticketId);
+        try {
+            showLoadingState();
 
-      if (!ticket) {
-        document.querySelector(".container").innerHTML = "<p>Ticket not found.</p>";
-        return;
-      }
+            // Fetch ticket and attachments in parallel for better performance
+            const [ticketRes, attachmentsRes] = await Promise.all([
+                fetch(`${API_BASE}/tickets/${ticketId}`, {
+                    headers: { "Authorization": "Bearer " + token }
+                }),
+                fetch(`${API_BASE}/attachments/ticket/${ticketId}`, {
+                    headers: { "Authorization": "Bearer " + token }
+                })
+            ]);
 
-      document.getElementById("ticketTitle").innerText = ticket.title;
-      document.getElementById("ticketDescription").innerText = ticket.description;
-      document.getElementById("ticketPriority").innerText = ticket.priority ? ticket.priority.name : "-";
-      document.getElementById("ticketStatus").innerText = ticket.status ? ticket.status.name : "-";
+            if (!ticketRes.ok) throw new Error("Failed to load ticket");
+            if (!attachmentsRes.ok) throw new Error("Failed to load attachments");
 
-      // Load attachments
-      const resAttach = await fetch(`http://localhost:8080/api/attachments/ticket/${ticketId}`, {
-        headers: { "Authorization": "Bearer " + token3 }
-      });
-      const attachments = await resAttach.json();
-      const attachList = document.getElementById("attachments");
-      attachList.innerHTML = "";
+            const ticket = await ticketRes.json();
+            const attachments = await attachmentsRes.json();
 
-      if (attachments.length === 0) {
-        attachList.innerHTML = "<li>No attachments</li>";
-      } else {
-        attachments.forEach(a => {
-          attachList.innerHTML += `<li>
-            <a href="http://localhost:8080/attachments/${a.storedFileName}" target="_blank">${a.originalFileName}</a>
-          </li>`;
+            // Update ticket details
+            document.getElementById("ticketTitle").innerText = ticket.title;
+            document.getElementById("ticketDescription").innerText = ticket.description;
+            document.getElementById("ticketPriority").innerText = ticket.priority ? ticket.priority.name : "-";
+            document.getElementById("ticketStatus").innerText = ticket.status ? ticket.status.name : "-";
+
+            // Process attachments
+            await processAttachments(attachments);
+
+        } catch (err) {
+            console.error("Error loading ticket:", err);
+            showErrorState("Error loading ticket or attachments. Please try again.");
+        }
+    }
+
+    async function processAttachments(attachments) {
+        const galleries = {
+            images: document.getElementById("imagesGallery"),
+            pdfs: document.getElementById("pdfsGallery"),
+            videos: document.getElementById("videosGallery"),
+            other: document.getElementById("otherFilesGallery")
+        };
+
+        // Clear loading states
+        Object.values(galleries).forEach(gallery => {
+            if (gallery) gallery.innerHTML = "";
         });
-      }
+
+        if (!attachments || attachments.length === 0) {
+            galleries.images.innerHTML = "<div class='empty-state'>No images found</div>";
+            galleries.pdfs.innerHTML = "<div class='empty-state'>No PDFs found</div>";
+            galleries.videos.innerHTML = "<div class='empty-state'>No videos found</div>";
+            return;
+        }
+
+        // Process each attachment
+        for (let attachment of attachments) {
+            try {
+                const fileName = attachment.originalFileName.toLowerCase();
+                const cleanFileName = escapeHtml(attachment.originalFileName);
+
+                const item = document.createElement("div");
+                item.className = "gallery-item";
+                item.dataset.attachmentId = attachment.id;
+
+                if (fileName.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i)) {
+                    // For images, load preview immediately
+                    const previewRes = await fetch(`${API_BASE}/attachments/${attachment.id}/preview`, {
+                        headers: { "Authorization": "Bearer " + token }
+                    });
+
+                    if (previewRes.ok) {
+                        const blob = await previewRes.blob();
+                        const url = URL.createObjectURL(blob);
+                        objectUrls.push(url); // Store for cleanup
+
+                        item.innerHTML = `
+                            <h4 title="${cleanFileName}">${truncateFileName(cleanFileName, 20)}</h4>
+                            <img src="${url}" alt="${cleanFileName}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjM1ZW0iIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiPkltYWdlIG5vdCBmb3VuZDwvdGV4dD48L3N2Zz4='">
+                            <button onclick="downloadAttachment('${attachment.id}', '${cleanFileName.replace(/'/g, "\\'")}')">Download</button>
+                        `;
+                    } else {
+                        item.innerHTML = `
+                            <h4 title="${cleanFileName}">${truncateFileName(cleanFileName, 20)}</h4>
+                            <p>Preview unavailable</p>
+                            <button onclick="downloadAttachment('${attachment.id}', '${cleanFileName.replace(/'/g, "\\'")}')">Download</button>
+                        `;
+                    }
+                    galleries.images.appendChild(item);
+                } else if (fileName.match(/\.pdf$/i)) {
+                    // For PDFs, don't load content until requested
+                    item.innerHTML = `
+                        <h4 title="${cleanFileName}">${truncateFileName(cleanFileName, 20)}</h4>
+                        <div style="width:100%; height:150px; background:#f0f0f0; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">
+                            <span style="font-size:48px;">📄</span>
+                        </div>
+                        <button onclick="downloadAttachment('${attachment.id}', '${cleanFileName.replace(/'/g, "\\'")}')">Download</button>
+                    `;
+                    galleries.pdfs.appendChild(item);
+                } else if (fileName.match(/\.(mp4|webm|ogg|mov|avi|wmv)$/i)) {
+                    // For videos, don't load content until requested
+                    item.innerHTML = `
+                        <h4 title="${cleanFileName}">${truncateFileName(cleanFileName, 20)}</h4>
+                        <div style="width:100%; height:150px; background:#f0f0f0; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">
+                            <span style="font-size:48px;">🎬</span>
+                        </div>
+                        <button onclick="downloadAttachment('${attachment.id}', '${cleanFileName.replace(/'/g, "\\'")}')">Download</button>
+                        <button onclick="previewVideo('${attachment.id}', this)" style="margin-top:5px; background-color:#2196F3;">Preview</button>
+                    `;
+                    galleries.videos.appendChild(item);
+                } else {
+                    // Show other file types
+                    document.getElementById("otherFilesSection").style.display = "block";
+                    item.innerHTML = `
+                        <h4 title="${cleanFileName}">${truncateFileName(cleanFileName, 20)}</h4>
+                        <p>File type: ${getFileExtension(cleanFileName).toUpperCase()}</p>
+                        <button onclick="downloadAttachment('${attachment.id}', '${cleanFileName.replace(/'/g, "\\'")}')">Download</button>
+                    `;
+                    galleries.other.appendChild(item);
+                }
+            } catch (error) {
+                console.error("Error processing attachment:", error);
+            }
+        }
+
+        // Handle empty galleries
+        if (galleries.images.children.length === 0) {
+            galleries.images.innerHTML = "<div class='empty-state'>No images found</div>";
+        }
+        if (galleries.pdfs.children.length === 0) {
+            galleries.pdfs.innerHTML = "<div class='empty-state'>No PDFs found</div>";
+        }
+        if (galleries.videos.children.length === 0) {
+            galleries.videos.innerHTML = "<div class='empty-state'>No videos found</div>";
+        }
+    }
+
+    async function downloadAttachment(attachmentId, filename) {
+        try {
+            const response = await fetch(`${API_BASE}/attachments/${attachmentId}/download`, {
+                headers: { "Authorization": "Bearer " + token }
+            });
+
+            if (!response.ok) throw new Error("Failed to download file");
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            objectUrls.push(url);
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            // Clean up after a short delay
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+        } catch (error) {
+            console.error("Error downloading file:", error);
+            alert("Failed to download file. Please try again.");
+        }
+    }
+
+    async function previewVideo(attachmentId, button) {
+        try {
+            const item = button.parentElement;
+            const videoContainer = item.querySelector("div");
+
+            // Replace placeholder with loading indicator
+            videoContainer.innerHTML = "<span>Loading...</span>";
+
+            const response = await fetch(`${API_BASE}/attachments/${attachmentId}/preview`, {
+                headers: { "Authorization": "Bearer " + token }
+            });
+
+            if (!response.ok) throw new Error("Failed to load video");
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            objectUrls.push(url);
+
+            videoContainer.innerHTML = `
+                <video controls style="width:100%; height:150px; object-fit:contain;">
+                    <source src="${url}" type="video/mp4">
+                    Your browser does not support video playback.
+                </video>
+            `;
+
+            // Hide the preview button after it's been clicked
+            button.style.display = "none";
+        } catch (error) {
+            console.error("Error loading video:", error);
+            button.parentElement.querySelector("div").innerHTML = "<span>Failed to load video</span>";
+        }
     }
 
     function logout() {
-      localStorage.clear();
+        // Clean up object URLs before logout
+        objectUrls.forEach(url => URL.revokeObjectURL(url));
+        localStorage.clear();
+        window.location.href = "login.html";
     }
 
-    loadTicketDetails();
+    function showLoadingState() {
+        document.getElementById("ticketTitle").innerText = "Loading ticket details...";
+        document.getElementById("ticketDescription").innerText = "Loading...";
+        document.getElementById("ticketPriority").innerText = "Loading...";
+        document.getElementById("ticketStatus").innerText = "Loading...";
+    }
+
+    function showErrorState(message) {
+        document.querySelector(".container").innerHTML = `
+            <div class="error">
+                <h2>Error</h2>
+                <p>${message}</p>
+                <button onclick="window.location.reload()">Try Again</button>
+            </div>
+        `;
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function truncateFileName(name, maxLength) {
+        if (name.length <= maxLength) return name;
+        return name.substring(0, maxLength) + '...';
+    }
+
+    function getFileExtension(filename) {
+        return filename.split('.').pop();
+    }
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function() {
+        loadTicketDetails();
+
+        // Clean up object URLs when page is unloaded
+        window.addEventListener('beforeunload', function() {
+            objectUrls.forEach(url => URL.revokeObjectURL(url));
+        });
+    });
 </script>
 </body>
 </html>

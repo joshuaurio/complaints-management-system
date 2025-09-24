@@ -1,37 +1,29 @@
-// CreateUserRequest.java
 package com.kcmc.complaints.dto;
 
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Size;
 
-public class CreateUserRequest {
-    @NotBlank(message = "Employee ID is required")
+public class UpdateUserRequest {
     @Size(max = 20, message = "Employee ID must not exceed 20 characters")
     public String employeeId;
 
-    @NotBlank(message = "Username is required")
     @Size(min = 3, max = 100, message = "Username must be between 3 and 100 characters")
     public String username;
 
-    @NotBlank(message = "Email is required")
     @Email(message = "Valid email is required")
     @Size(max = 255, message = "Email must not exceed 255 characters")
     public String email;
 
-    @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters")
-    public String password; // will be stored as hash
+    public String password;
 
-    @NotBlank(message = "First name is required")
     @Size(max = 100, message = "First name must not exceed 100 characters")
     public String firstName;
 
-    @NotBlank(message = "Last name is required")
     @Size(max = 100, message = "Last name must not exceed 100 characters")
     public String lastName;
 
-    public Short roleId;        // FK roles.id - validated in service
-
-    public Integer departmentId; // FK departments.id (nullable) - validated in service
-
-    public String role; // Optional - not used in creation
+    public Short roleId; // FK roles.id - admin only
+    public Integer departmentId; // FK departments.id - admin only
+    public Boolean isActive; // admin only
 }

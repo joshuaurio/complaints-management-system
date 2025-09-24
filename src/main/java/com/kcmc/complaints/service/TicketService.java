@@ -61,13 +61,15 @@ public class TicketService {
 
     @Transactional
     public Ticket updateStatus(Long ticketId, UpdateTicketStatusRequest req) {
-        Ticket t = findById(ticketId);
+        Ticket ticket = findById(ticketId);
         TicketStatus status = lookup.mustGetStatusByName(req.statusName);
-        t.setStatus(status);
+        ticket.setStatus(status);
         if (Boolean.TRUE.equals(status.getResolvedStatus())) {
-            t.setClosedAt(Instant.now());
+            ticket.setClosedAt(Instant.now());
+        } else {
+            ticket.setClosedAt(null); // Reset closedAt if status is not resolved
         }
-        return ticketRepo.save(t);
+        return ticketRepo.save(ticket);
     }
 
     @Transactional
