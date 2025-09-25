@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Administrator - User Management</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="system-name">IT Support Ticket System</div>
+<nav>
+    <a href="administrator-create-ticket.html">Create Ticket</a> |
+    <a href="administrator-view-tickets.html">View Tickets</a> |
+    <a href="admin-user-management.html" class="active">User Management</a> |
+    <a href="admin-department-management.html">Department Management</a> |
+    <a href="profile.html">Profile</a> |
+    <a href="login.html" onclick="logout()">Logout</a>
+</nav>
+
+<div class="container">
+    <h2>User Management</h2>
+    <table border="1">
+        <thead>
+        <tr>
+            <th>No.</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Department</th>
+            <th>Active</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody id="userTable"></tbody>
+    </table>
+
+    <h3 id="formTitle">Create New User</h3>
+    <form id="userForm" class="card">
+        <input type="hidden" id="userId">
+        <div class="form-group">
+            <label for="employeeId">Employee ID</label>
+            <input type="text" id="employeeId">
+        </div>
+        <div class="form-group">
+            <label for="username">Username *</label>
+            <input type="text" id="username" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Email *</label>
+            <input type="email" id="email" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password *</label>
+            <input type="password" id="password" required>
+        </div>
+        <div class="form-group">
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName">
+        </div>
+        <div class="form-group">
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName">
+        </div>
+        <div class="form-group">
+            <label for="roleId">Role *</label>
+            <select id="roleId" required></select>
+        </div>
+        <div class="form-group">
+            <label for="departmentId">Department</label>
+            <select id="departmentId"></select>
+        </div>
+        <div class="form-group">
+            <label for="isActive">Active Status</label>
+            <select id="isActive">
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+            </select>
+        </div>
+        <button type="submit" class="btn-login" id="submitButton">Create User</button>
+        <p id="message" class="success"></p>
+        <p id="error" class="error"></p>
+    </form>
+</div>
+
+<script>
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+
+    if (!token || role !== "ADMINISTRATOR") window.location.href = "login.html";
+
+    async function loadUsers() {
+        try {
+            const res = await fetch("http://localhost:8080/api/users?page=0&size=100", {
+                headers: { "Authorization": "Bearer " + token }
+            });
+            const data = await res.json();
+            const tbody = document.getElementById("userTable");
+            tbody.innerHTML = "";
+            let counter = 1;
+
+            data.content.forEach(user => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${counter++}</td>
+                        <td>${user.username}</td>
+                        <td>${user.email}</td>
+                        <td>${user.role.name}</td>
+                        <td>${user.department ? user.department.name : '-'}</td>
+                        <td>${user.isActive ? 'Active' : 'Inactive'}</td>
+                        <td>
+                            <button class="btn-secondary" onclick="editUser(${user.id})">Edit</button>
+                            <button class="btn-danger" onclick="deleteUser(${user.id})">Delete</button>
+                        </td>
+                    </tr>`;
+            });
+        } catch (err) {
+            showError("Failed to load users");
+        }
+    }
+
+    async function loadDropdowns() {
+        try {
+            const [rolesRes, deptsRes] = await Promise.all([
+                fetch("http://localhost:8080/api/roles", { headers: { "Authorization": "Bearer " + token } }),
+                fetch("http://localhost:8080/api/departments", { headers: { "Authorization": "Bearer " + token } })
+            ]);
+            const roles = await rolesRes.json();
+            const departments = await deptsRes.json();
+
+            const roleSelect = document.getElementById("roleId");
+            roles.forEach(r => {
+                roleSelect.innerHTML += `<option value="${r.id}">${r.name}</option>`;
+            });
+
+            const deptSelect = document.getElementById("departmentId");
+            deptSelect.innerHTML = `<option value="">No Department</option>`;
+            departments.forEach(d => {
+                deptSelect.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+            });
+        } catch (err) {
+            showError("Failed to load roles or departments");
+        }
+    }
+
+    async function editUser(id) {
+        try {
+            const res = await fetch(`http://localhost:8080/api/users/${id}`, {
+                headers: { "Authorization": "Bearer " + token }
+            });
+            const user = await res.json();
+
+            document.getElementById("formTitle").innerText = "Update User";
+            document.getElementById("submitButton").innerText = "Update User";
+            document.getElementById("userId").value = user.id;
+            document.getElementById("employeeId").value = user.employeeId || "";
+            document.getElementById("username").value = user.username || "";
+            document.getElementById("email").value = user.email || "";
+            document.getElementById("password").value = "";
+            document.getElementById("firstName").value = user.firstName || "";
+            document.getElementById("lastName").value = user.lastName || "";
+            document.getElementById("roleId").value = user.role.id;
+            document.getElementById("departmentId").value = user.department ? user.department.id : "";
+            document.getElementById("isActive").value = user.isActive.toString();
+        } catch (err) {
+            showError("Failed to load user");
+        }
+    }
+
+    async function deleteUser(id) {
+        if (!confirm("Are you sure you want to delete this user?")) return;
+
+        try {
+            const res = await fetch(`http://localhost:8080/api/users/${id}`, {
+                method: "DELETE",
+                headers: { "Authorization": "Bearer " + token }
+            });
+            if (!res.ok) throw new Error("Failed to delete user");
+
+            showMessage("User deleted successfully!");
+            loadUsers();
+        } catch (err) {
+            showError(err.message);
+        }
+    }
+
+    document.getElementById("userForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const userId = document.getElementById("userId").value;
+        const method = userId ? "PUT" : "POST";
+        const endpoint = userId ? `/api/users/${userId}` : "/api/users";
+
+        const payload = {
+            employeeId: document.getElementById("employeeId").value.trim() || null,
+            username: document.getElementById("username").value.trim(),
+            email: document.getElementById("email").value.trim(),
+            password: document.getElementById("password").value.trim() || null,
+            firstName: document.getElementById("firstName").value.trim() || null,
+            lastName: document.getElementById("lastName").value.trim() || null,
+            roleId: document.getElementById("roleId").value,
+            departmentId: document.getElementById("departmentId").value || null,
+            isActive: document.getElementById("isActive").value === "true"
+        };
+
+        try {
+            const res = await fetch("http://localhost:8080" + endpoint, {
+                method: method,
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || "Operation failed");
+            }
+
+            showMessage("User " + (userId ? "updated" : "created") + " successfully!");
+            document.getElementById("userForm").reset();
+            document.getElementById("formTitle").innerText = "Create New User";
+            document.getElementById("submitButton").innerText = "Create User";
+            document.getElementById("userId").value = "";
+            loadUsers();
+        } catch (err) {
+            showError(err.message);
+        }
+    });
+
+    function showMessage(message) {
+        document.getElementById("message").innerText = message;
+        document.getElementById("message").style.display = "block";
+    }
+
+    function showError(message) {
+        document.getElementById("error").innerText = message;
+        document.getElementById("error").style.display = "block";
+    }
+
+    function logout() {
+        localStorage.clear();
+    }
+
+    loadDropdowns();
+    loadUsers();
+</script>
+</body>
+</html>

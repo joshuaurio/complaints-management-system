@@ -6,9 +6,11 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="system-name">IT Support Ticket System</div>
 <nav>
     <a href="staff-create-ticket.html">Create Ticket</a> |
-    <a href="staff-view-tickets.html">View My Tickets</a> |
+    <a href="staff-view-tickets.html" class="active">View My Tickets</a> |
+    <a href="profile.html">Profile</a> |
     <a href="login.html" onclick="logout()">Logout</a>
 </nav>
 
@@ -32,14 +34,14 @@
 </div>
 
 <script>
-    const token2 = localStorage.getItem("token");
-    const userId2 = localStorage.getItem("userId");
+    const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
 
-    if (!token2) window.location.href = "login.html";
+    if (!token) window.location.href = "login.html";
 
     async function loadTickets() {
       const res = await fetch("http://localhost:8080/api/tickets", {
-        headers: { "Authorization": "Bearer " + token2 }
+        headers: { "Authorization": "Bearer " + token }
       });
       const data = await res.json();
       const tbody = document.getElementById("ticketTable");
@@ -47,7 +49,7 @@
       tbody.innerHTML = "";
       let counter = 1;
       data.content.forEach(t => {
-        if (t.createdBy && t.createdBy.id == userId2) {
+        if (t.createdBy && t.createdBy.id == userId) {
           tbody.innerHTML += `
             <tr>
               <td>${counter++}</td>

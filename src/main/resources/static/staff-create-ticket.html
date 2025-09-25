@@ -6,9 +6,11 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="system-name">IT Support Ticket System</div>
 <nav>
-    <a href="staff-create-ticket.html">Create Ticket</a> |
+    <a href="staff-create-ticket.html" class="active">Create Ticket</a> |
     <a href="staff-view-tickets.html">View My Tickets</a> |
+    <a href="profile.html">Profile</a> |
     <a href="login.html" onclick="logout()">Logout</a>
 </nav>
 
@@ -50,14 +52,10 @@
       const priorities = await priRes.json();
 
       const catSelect = document.getElementById("category");
-      categories.forEach(c => {
-        catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-      });
+      categories.forEach(c => catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`);
 
       const priSelect = document.getElementById("priority");
-      priorities.forEach(p => {
-        priSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
-      });
+      priorities.forEach(p => priSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`);
     }
     loadDropdowns();
 

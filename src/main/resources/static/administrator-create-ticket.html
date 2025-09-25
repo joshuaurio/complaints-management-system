@@ -6,9 +6,13 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="system-name">IT Support Ticket System</div>
 <nav>
-    <a href="administrator-create-ticket.html">Create Ticket</a> |
+    <a href="administrator-create-ticket.html" class="active">Create Ticket</a> |
     <a href="administrator-view-tickets.html">View Tickets</a> |
+    <a href="admin-user-management.html">User Management</a> |
+    <a href="admin-department-management.html">Department Management</a> |
+    <a href="profile.html">Profile</a> |
     <a href="login.html" onclick="logout()">Logout</a>
 </nav>
 
@@ -26,6 +30,9 @@
 
         <label>Priority</label>
         <select id="prioritySelect"></select>
+
+        <label>Attachment (optional)</label>
+        <input type="file" id="attachment">
 
         <button type="submit">Submit</button>
     </form>
@@ -60,6 +67,12 @@
 
     document.getElementById("ticketForm").addEventListener("submit", async e => {
       e.preventDefault();
+      const title = document.getElementById("title").value;
+      const description = document.getElementById("description").value;
+      const categoryId = document.getElementById("categorySelect").value;
+      const priorityId = document.getElementById("prioritySelect").value;
+      const file = document.getElementById("attachment").files[0];
+
       const res = await fetch("http://localhost:8080/api/tickets", {
         method: "POST",
         headers: {
@@ -67,15 +80,26 @@
           "Authorization": "Bearer " + token
         },
         body: JSON.stringify({
-          title: document.getElementById("title").value,
-          description: document.getElementById("description").value,
-          categoryId: document.getElementById("categorySelect").value,
-          priorityId: document.getElementById("prioritySelect").value,
-          createdById: userId
+          title, description, categoryId, priorityId,
+          createdById: userId, statusName: "OPEN"
         })
       });
 
       if (res.ok) {
+        const ticket = await res.json();
+
+        if (file) {
+          const formData = new FormData();
+          formData.append("uploadedById", userId);
+          formData.append("file", file);
+
+          await fetch(`http://localhost:8080/api/attachments/ticket/${ticket.id}`, {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token },
+            body: formData
+          });
+        }
+
         document.getElementById("message").innerText = "Ticket created successfully!";
         document.getElementById("ticketForm").reset();
       } else {

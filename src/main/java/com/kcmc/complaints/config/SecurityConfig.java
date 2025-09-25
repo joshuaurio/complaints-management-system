@@ -42,6 +42,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Permit static resources
+                        .requestMatchers("/**.html", "/**.css", "/**.js").permitAll()
 
                         // Public authentication endpoints
                         .requestMatchers("/api/auth/**").permitAll()
@@ -69,7 +71,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMINISTRATOR")
 
                         // Department APIs rules
-                        .requestMatchers(HttpMethod.GET, "/api/departments/**").hasAnyRole("ADMINISTRATOR", "STAFF", "ICT_AGENT")
+                        .requestMatchers(HttpMethod.GET, "/api/departments/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/departments/**").hasRole("ADMINISTRATOR")
                         .requestMatchers(HttpMethod.PUT, "/api/departments/**").hasRole("ADMINISTRATOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/departments/**").hasRole("ADMINISTRATOR")
@@ -113,7 +115,8 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of(
                 "http://localhost:3000",
                 "http://localhost:5173",
-                "http://localhost:4200"
+                "http://localhost:4200",
+                "http://localhost:8080" // Added for static resources served by Spring Boot
         ));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));

@@ -6,15 +6,17 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="system-name">IT Support Ticket System</div>
 <nav>
     <a href="ict-agent-create-ticket.html">Create Ticket</a> |
     <a href="ict-agent-view-tickets.html">View My Tickets</a> |
+    <a href="profile.html">Profile</a> |
     <a href="login.html" onclick="logout()">Logout</a>
 </nav>
 
 <div class="container">
     <h2 id="ticketTitle">Ticket Details</h2>
-    <p><b>Assigned By:</b> <span id="assignedBy"></span></p>
+    <p><b>Created By:</b> <span id="createdBy"></span></p>
     <p><b>Category:</b> <span id="ticketCategory"></span></p>
     <p><b>Description:</b> <span id="ticketDescription"></span></p>
     <p><b>Priority:</b> <span id="ticketPriority"></span></p>
@@ -44,19 +46,13 @@
     if (!token || !ticketId) window.location.href = "login.html";
 
     async function loadTicket() {
-      const res = await fetch("http://localhost:8080/api/tickets", {
+      const res = await fetch("http://localhost:8080/api/tickets/" + ticketId, {
         headers: { "Authorization": "Bearer " + token }
       });
-      const data = await res.json();
-      const ticket = data.content.find(t => t.id == ticketId);
-
-      if (!ticket) {
-        document.querySelector(".container").innerHTML = "<p>Ticket not found.</p>";
-        return;
-      }
+      const ticket = await res.json();
 
       document.getElementById("ticketTitle").innerText = ticket.title;
-      document.getElementById("assignedBy").innerText = ticket.createdBy ? ticket.createdBy.firstName + " " + ticket.createdBy.lastName : "-";
+      document.getElementById("createdBy").innerText = ticket.createdBy ? ticket.createdBy.firstName + " " + ticket.createdBy.lastName : "-";
       document.getElementById("ticketCategory").innerText = ticket.category ? ticket.category.name : "-";
       document.getElementById("ticketDescription").innerText = ticket.description;
       document.getElementById("ticketPriority").innerText = ticket.priority ? ticket.priority.name : "-";

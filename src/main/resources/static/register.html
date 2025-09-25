@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - IT Support Ticket System</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .register-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .register-header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .form-group input, .form-group select {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 12px;
+            font-size: 16px;
+        }
+
+        .btn-register {
+            background: #3498db;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .btn-register:hover {
+            background: #2980b9;
+        }
+
+        .error {
+            background: #ffecec;
+            color: #e74c3c;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .system-name {
+            text-align: center;
+            color: #3498db;
+            font-size: 24px;
+            margin-bottom: 40px;
+            font-weight: bold;
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .login-link a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div class="system-name">IT Support Ticket System</div>
+<div class="register-container">
+    <h2 class="register-header">Register New Account (Staff Only)</h2>
+    <form id="registerForm">
+        <div class="form-group">
+            <label for="employeeId">Employee ID</label>
+            <input type="text" id="employeeId" placeholder="Enter employee ID">
+        </div>
+        <div class="form-group">
+            <label for="username">Username *</label>
+            <input type="text" id="username" placeholder="Enter username" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Email *</label>
+            <input type="email" id="email" placeholder="Enter email" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password *</label>
+            <input type="password" id="password" placeholder="Enter password" required>
+        </div>
+        <div class="form-group">
+            <label for="firstName">First Name *</label>
+            <input type="text" id="firstName" placeholder="Enter first name" required>
+        </div>
+        <div class="form-group">
+            <label for="lastName">Last Name *</label>
+            <input type="text" id="lastName" placeholder="Enter last name" required>
+        </div>
+        <div class="form-group">
+            <label for="departmentId">Department</label>
+            <select id="departmentId"></select>
+        </div>
+        <button type="submit" class="btn-register">Register</button>
+        <div id="error" class="error"></div>
+    </form>
+    <div class="login-link">
+        <p>Already have an account? <a href="login.html">Login here</a></p>
+    </div>
+</div>
+
+<script>
+    async function loadDepartments() {
+        try {
+            const res = await fetch("http://localhost:8080/api/departments");
+            if (!res.ok) throw new Error("Failed to load departments");
+
+            const departments = await res.json();
+            const deptSelect = document.getElementById("departmentId");
+            deptSelect.innerHTML = `<option value="">No Department</option>`;
+            departments.forEach(d => {
+                deptSelect.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+            });
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const employeeId = document.getElementById("employeeId").value.trim() || null;
+        const username = document.getElementById("username").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value.trim();
+        const firstName = document.getElementById("firstName").value.trim();
+        const lastName = document.getElementById("lastName").value.trim();
+        const departmentId = document.getElementById("departmentId").value || null;
+
+        const errorElement = document.getElementById("error");
+
+        try {
+            const res = await fetch("http://localhost:8080/api/users/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ employeeId, username, email, password, firstName, lastName, departmentId })
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || "Registration failed");
+            }
+
+            const data = await res.json();
+            alert(data.message);
+            window.location.href = "login.html";
+        } catch (err) {
+            errorElement.innerText = err.message;
+            errorElement.style.display = 'block';
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadDepartments();
+    });
+</script>
+</body>
+</html>

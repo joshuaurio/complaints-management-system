@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - IT Support Ticket System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="system-name">IT Support Ticket System</div>
+<nav>
+    <a id="createTicketLink" href="#">Create Ticket</a> |
+    <a id="viewTicketsLink" href="#">View My Tickets</a> |
+    <a href="profile.html" class="active">Profile</a> |
+    <a href="login.html" onclick="logout()">Logout</a>
+</nav>
+
+<div class="container">
+    <h2>Update Profile</h2>
+    <form id="profileForm" class="card">
+        <div class="form-group">
+            <label for="employeeId">Employee ID</label>
+            <input type="text" id="employeeId" placeholder="Enter employee ID">
+        </div>
+        <div class="form-group">
+            <label for="username">Username *</label>
+            <input type="text" id="username" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Email *</label>
+            <input type="email" id="email" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password (leave blank to keep unchanged)</label>
+            <input type="password" id="password" placeholder="Enter new password">
+        </div>
+        <div class="form-group">
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" placeholder="Enter first name">
+        </div>
+        <div class="form-group">
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" placeholder="Enter last name">
+        </div>
+        <div id="adminFields" style="display: none;">
+            <div class="form-group">
+                <label for="roleId">Role</label>
+                <select id="roleId"></select>
+            </div>
+            <div class="form-group">
+                <label for="departmentId">Department</label>
+                <select id="departmentId"></select>
+            </div>
+            <div class="form-group">
+                <label for="isActive">Active Status</label>
+                <select id="isActive">
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+        </div>
+        <button type="submit" class="btn-login">Update Profile</button>
+        <p id="message" class="success"></p>
+        <p id="error" class="error"></p>
+    </form>
+</div>
+
+<script>
+    const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+    const role = localStorage.getItem("role");
+
+    if (!token || !userId) {
+        window.location.href = "login.html";
+    }
+
+    // Set navigation links based on role
+    const createTicketLink = document.getElementById("createTicketLink");
+    const viewTicketsLink = document.getElementById("viewTicketsLink");
+    if (role === "STAFF") {
+        createTicketLink.href = "staff-create-ticket.html";
+        viewTicketsLink.href = "staff-view-tickets.html";
+    } else if (role === "ICT_AGENT") {
+        createTicketLink.href = "ict-agent-create-ticket.html";
+        viewTicketsLink.href = "ict-agent-view-tickets.html";
+    } else if (role === "ADMINISTRATOR") {
+        createTicketLink.href = "administrator-create-ticket.html";
+        viewTicketsLink.href = "administrator-view-tickets.html";
+    }
+
+    async function loadProfile() {
+        try {
+            const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
+                headers: { "Authorization": "Bearer " + token }
+            });
+            if (!res.ok) throw new Error("Failed to load profile");
+
+            const user = await res.json();
+            document.getElementById("employeeId").value = user.employeeId || "";
+            document.getElementById("username").value = user.username || "";
+            document.getElementById("email").value = user.email || "";
+            document.getElementById("firstName").value = user.firstName || "";
+            document.getElementById("lastName").value = user.lastName || "";
+
+            if (role === "ADMINISTRATOR") {
+                document.getElementById("adminFields").style.display = "block";
+                await loadAdminDropdowns();
+                document.getElementById("roleId").value = user.role.id;
+                document.getElementById("departmentId").value = user.department ? user.department.id : "";
+                document.getElementById("isActive").value = user.isActive.toString();
+            }
+        } catch (err) {
+            showError(err.message);
+        }
+    }
+
+    async function loadAdminDropdowns() {
+        try {
+            const [rolesRes, deptsRes] = await Promise.all([
+                fetch("http://localhost:8080/api/roles", { headers: { "Authorization": "Bearer " + token } }),
+                fetch("http://localhost:8080/api/departments", { headers: { "Authorization": "Bearer " + token } })
+            ]);
+            if (!rolesRes.ok || !deptsRes.ok) throw new Error("Failed to load roles or departments");
+
+            const roles = await rolesRes.json();
+            const departments = await deptsRes.json();
+
+            const roleSelect = document.getElementById("roleId");
+            roles.forEach(r => {
+                roleSelect.innerHTML += `<option value="${r.id}">${r.name}</option>`;
+            });
+
+            const deptSelect = document.getElementById("departmentId");
+            deptSelect.innerHTML = `<option value="">No Department</option>`;
+            departments.forEach(d => {
+                deptSelect.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+            });
+        } catch (err) {
+            showError("Failed to load roles or departments");
+        }
+    }
+
+    document.getElementById("profileForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const messageElement = document.getElementById("message");
+        const errorElement = document.getElementById("error");
+
+        const payload = {
+            employeeId: document.getElementById("employeeId").value.trim() || null,
+            username: document.getElementById("username").value.trim(),
+            email: document.getElementById("email").value.trim(),
+            password: document.getElementById("password").value.trim() || null,
+            firstName: document.getElementById("firstName").value.trim() || null,
+            lastName: document.getElementById("lastName").value.trim() || null
+        };
+
+        if (role === "ADMINISTRATOR") {
+            payload.roleId = document.getElementById("roleId").value || null;
+            payload.departmentId = document.getElementById("departmentId").value || null;
+            payload.isActive = document.getElementById("isActive").value === "true";
+        }
+
+        try {
+            const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || "Failed to update profile");
+            }
+
+            const data = await res.json();
+            messageElement.innerText = data.message;
+            messageElement.style.display = "block";
+
+            // Update localStorage if changed
+            if (payload.username) localStorage.setItem("username", payload.username);
+            if (payload.firstName) localStorage.setItem("firstName", payload.firstName);
+            if (payload.lastName) localStorage.setItem("lastName", payload.lastName);
+
+        } catch (err) {
+            errorElement.innerText = err.message;
+            errorElement.style.display = "block";
+        }
+    });
+
+    function logout() {
+        localStorage.clear();
+    }
+
+    loadProfile();
+</script>
+</body>
+</html>
